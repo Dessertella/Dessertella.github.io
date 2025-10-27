@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recipes · Минимал 2025</title>
+  <meta name="description" content="Минималистичный каталог рецептов с TheMealDB: категории, поиск, детальная карточка. Полный авто‑перевод RU/EN. Один index.html." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{ --bg:#ffffff; --text:#0a0a0a; --muted:#6b7280; --line:#e5e7eb; --card:#ffffff; --radius:14px; --pad:14px; --gap:12px; --shadow:0 1px 0 rgba(0,0,0,.04) }
+    *{ box-sizing:border-box }
+    html,body{ height:100% }
+    body{ margin:0; background:var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif }
+    a{ color:inherit; text-decoration:underline; text-underline-offset:2px }
+    .app{ display:grid; grid-template-columns: 352px 1fr; height:100vh }
+    .left{ border-right:1px solid var(--line); display:flex; flex-direction:column; min-width:0; background:var(--bg) }
+    .right{ display:flex; flex-direction:column; min-width:0; background:var(--bg) }
+
+    /* HEADER */
+    .header{ display:flex; align-items:center; justify-content:space-between; padding:12px var(--pad); border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:5 }
+    .brand{ display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px }
+    .brand .dot{ width:8px; height:8px; border-radius:50%; background:#111 }
+    .controls{ display:flex; align-items:center; gap:8px }
+    .seg{ display:inline-flex; border:1px solid var(--line); border-radius:999px; overflow:hidden }
+    .seg button{ border:0; background:transparent; padding:8px 12px; cursor:pointer; font-weight:600; color:var(--muted) }
+    .seg button[aria-pressed="true"]{ color:var(--text); background:var(--card) }
+
+    /* SEARCH + CATEGORIES */
+    .search{ padding:var(--pad); border-bottom:1px solid var(--line); position:sticky; top:52px; background:var(--bg); z-index:4 }
+    .search input{ width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:10px; outline:none; background:transparent; color:var(--text) }
+    .search input:focus{ box-shadow:0 0 0 3px rgba(0,0,0,.04) }
+
+    .cats{ display:flex; gap:8px; padding:10px var(--pad); overflow:auto; border-bottom:1px solid var(--line) }
+    .chip{ padding:8px 12px; border:1px solid var(--line); border-radius:999px; font-size:13px; white-space:nowrap; cursor:pointer; background:var(--card) }
+    .chip[aria-current="true"]{ outline:2px solid #d4d4d4 }
+
+    /* LIST */
+    .list{ overflow:auto; padding:6px var(--pad) var(--pad); display:flex; flex-direction:column; gap:6px }
+    .row{ display:grid; grid-template-columns: 56px 1fr auto; align-items:center; gap:10px; padding:8px; border-radius:12px; cursor:pointer; transition:background .2s ease }
+    .row:hover{ background:rgba(0,0,0,.04) }
+    .thumb{ width:56px; height:56px; border-radius:10px; object-fit:cover; background:#f1f1f1 }
+    .name{ font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+    .meta{ font-size:12px; color:var(--muted) }
+    .fav{ border:none; background:transparent; font-size:18px; line-height:1; cursor:pointer; color:#aaa }
+    .fav[data-on="true"]{ color:#eab308 }
+
+    /* TOP BAR RIGHT */
+    .toolbar{ display:flex; align-items:center; gap:8px; padding:10px var(--pad); border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:4 }
+    .btn{ border:1px solid var(--line); background:transparent; border-radius:10px; padding:10px 12px; font-weight:600; cursor:pointer }
+    .btn:active{ transform:translateY(1px) }
+
+    /* CONTENT */
+    .content{ overflow:auto; padding:var(--pad); display:grid; gap:var(--gap) }
+    .hero{ position:relative; width:100%; aspect-ratio: 21/9; border-radius:16px; overflow:hidden; background:#f1f1f1; box-shadow: var(--shadow) }
+    .hero img{ width:100%; height:100%; object-fit:cover; display:block; transform:scale(1.02); opacity:0; filter:saturate(1.03) contrast(1.02); transition:opacity .35s ease, transform .8s cubic-bezier(.2,.8,.2,1) }
+    .hero img.loaded{ opacity:1; transform:scale(1) }
+    .h1{ font-size:26px; font-weight:700; letter-spacing:.2px; margin-top:6px }
+    .sub{ color:var(--muted); font-size:13px }
+
+    .grid{ display:grid; grid-template-columns: 1.05fr .95fr; gap:var(--gap) }
+    .card{ border:1px solid var(--line); border-radius:12px; padding:14px; background:var(--card) }
+    .card h3{ margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.3px; color:var(--muted) }
+    .steps{ white-space:pre-wrap; line-height:1.65 }
+
+    /* INGREDIENTS with checkboxes + stagger */
+    .ing{ display:flex; align-items:center; gap:8px; padding:6px 4px; border-radius:8px; transition:background .2s ease, opacity .25s ease, transform .25s ease; opacity:0; transform:translateY(6px) }
+    .ing.show{ opacity:1; transform:translateY(0) }
+    .ing input{ width:18px; height:18px; accent-color:#10b981; cursor:pointer }
+    .ing.checked .txt{ text-decoration:line-through; opacity:.55 }
+
+    .tags{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px }
+    .tag{ border:1px solid var(--line); border-radius:999px; padding:6px 10px; font-size:12px }
+
+    .empty{ display:grid; place-items:center; height:100%; color:var(--muted) }
+
+    @media (max-width: 980px){ .app{ grid-template-columns: 1fr } .grid{ grid-template-columns: 1fr } .hero{ aspect-ratio: 16/9 } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- LEFT -->
+    <section class="left">
+      <div class="header">
+        <div class="brand"><div class="dot"></div><div id="brandTitle">Recipes</div></div>
+        <div class="controls">
+          <div class="seg" id="langSeg" role="tablist" aria-label="Language">
+            <button id="langRU" role="tab" aria-pressed="true">RU</button>
+            <button id="langEN" role="tab" aria-pressed="false">EN</button>
+          </div>
+        </div>
+      </div>
+      <div class="search"><input id="search" type="search" placeholder="Поиск (⌘/Ctrl + K)" autocomplete="off" /></div>
+      <nav class="cats" id="cats" aria-label="Категории"></nav>
+      <div class="list" id="list" role="listbox" aria-label="Список рецептов"></div>
+    </section>
+
+    <!-- RIGHT -->
+    <section class="right">
+      <div class="toolbar">
+        <button class="btn" id="btnRandom">Случайный</button>
+        <button class="btn" id="btnCopy">Скопировать рецепт</button>
+      </div>
+      <div class="content" id="content">
+        <div class="empty" data-i18n="empty">Выберите рецепт слева, или нажмите «Случайный».</div>
+      </div>
+    </section>
+  </div>
+
+<script>
+// ====== API (TheMealDB) ======
+const API = {
+  categories: 'https://www.themealdb.com/api/json/v1/1/list.php?c=list',
+  filterByCat: c => `https://www.themealdb.com/api/json/v1/1/filter.php?c=${encodeURIComponent(c)}`,
+  search: q => `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(q)}`,
+  lookup: id => `https://www.themealdb.com/api/json/v1/1/lookup.php?i=${encodeURIComponent(id)}`,
+  random: 'https://www.themealdb.com/api/json/v1/1/random.php'
+};
+
+// ====== UI STRINGS (no auto-translate to avoid CORS) ======
+const UI_STRINGS = {
+  ru: { app:'Рецепты', empty:'Выберите рецепт слева, или нажмите «Случайный».', Ingredients:'Ингредиенты', Instructions:'Инструкции', Source:'Источник', YouTube:'YouTube', Category:'Категория', Region:'Регион', Random:'Случайный', Copy:'Скопировать рецепт', Search:'Поиск (⌘/Ctrl + K)', Copied:'Рецепт скопирован', Failed:'Не удалось получить случайный рецепт' },
+  en: { app:'Recipes', empty:'Choose a recipe on the left or press "Random".', Ingredients:'Ingredients', Instructions:'Instructions', Source:'Source', YouTube:'YouTube', Category:'Category', Region:'Region', Random:'Random', Copy:'Copy recipe', Search:'Search (⌘/Ctrl + K)', Copied:'Recipe copied', Failed:'Failed to fetch random' }
+};
+
+// ====== STATE ======
+let CATEGORIES = [];
+let CURRENT_LIST = [];
+let FAVORITES = (() => {
+  try {
+    const data = JSON.parse(localStorage.getItem('meal_favs') || '[]');
+    return new Set(Array.isArray(data) ? data : []);
+  } catch(e) {
+    localStorage.removeItem('meal_favs');
+    return new Set();
+  }
+})();
+let LANG = localStorage.getItem('ui_lang') || 'ru';
+
+// ====== UI APPLY ======
+const byId = id => document.getElementById(id);
+function applyLangStatic(){
+  byId('brandTitle').textContent = UI_STRINGS[LANG].app;
+  byId('langRU').setAttribute('aria-pressed', String(LANG==='ru'));
+  byId('langEN').setAttribute('aria-pressed', String(LANG==='en'));
+  byId('search').placeholder = UI_STRINGS[LANG].Search;
+  const empty = document.querySelector('[data-i18n="empty"]'); if(empty) empty.textContent = UI_STRINGS[LANG].empty;
+  byId('btnRandom').textContent = UI_STRINGS[LANG].Random;
+  byId('btnCopy').textContent = UI_STRINGS[LANG].Copy;
+}
+function setFav(id, on){ on ? FAVORITES.add(id) : FAVORITES.delete(id); localStorage.setItem('meal_favs', JSON.stringify([...FAVORITES])); }
+function el(html){ const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; }
+function ingredientsFrom(meal){ const out=[]; for(let i=1;i<=20;i++){ const ing=meal[`strIngredient${i}`]; const m=meal[`strMeasure${i}`]; if(ing&&ing.trim()) out.push(`${ing}${m?` — ${m.trim()}`:''}`);} return out; }
+function tagsFrom(meal){ const t = meal.strTags || ''; return t ? t.split(',').map(s=>s.trim()).filter(Boolean) : []; }
+function toast(msg){ const t=document.getElementById('toast')||el(`<div id="toast" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);">${msg}</div>`); if(!t.parentNode) document.body.appendChild(t); t.textContent=msg; t.style.opacity='1'; clearTimeout(toast._h); toast._h=setTimeout(()=> t.style.opacity='0',1500); }
+
+// ====== LEFT LIST ======
+function renderList(arr){
+  const list = byId('list'); list.innerHTML = '';
+  arr.forEach(m =>{
+    const isFav = FAVORITES.has(m.idMeal);
+    const row = el(`
+      <div class="row" role="option" data-id="${m.idMeal}">
+        <img class="thumb" src="${m.strMealThumb}" alt="${m.strMeal}" loading="lazy">
+        <div>
+          <div class="name">${m.strMeal}</div>
+          <div class="meta">${m.strCategory||''}${m.strArea? ' · '+m.strArea:''}</div>
+        </div>
+        <button class="fav" title="Fav" data-fav data-on="${isFav}">${isFav?'★':'☆'}</button>
+      </div>`);
+    row.addEventListener('click', e=>{
+      if(e.target.matches('[data-fav]')) return;
+      openMeal(m.idMeal);
+      [...document.querySelectorAll('.row')].forEach(n=> n.classList.remove('active'));
+      row.classList.add('active');
+    });
+    row.querySelector('[data-fav]').addEventListener('click', e=>{
+      e.stopPropagation();
+      const on = !(e.currentTarget.getAttribute('data-on')==='true');
+      e.currentTarget.setAttribute('data-on', on);
+      e.currentTarget.textContent = on ? '★' : '☆';
+      setFav(m.idMeal, on);
+    });
+    list.appendChild(row);
+  });
+}
+
+// ====== DETAIL ======
+async function openMeal(id){
+  const r = await fetch(API.lookup(id)).then(r=>r.json()).catch(()=>({}));
+  const meal = r.meals && r.meals[0];
+  if(!meal){ byId('content').innerHTML = `<div class="empty">${UI_STRINGS[LANG].empty}</div>`; return; }
+  
+  const ings = ingredientsFrom(meal);
+  const tags = tagsFrom(meal);
+
+  const content = byId('content');
+  content.innerHTML = `
+    <div class="hero"><img id="heroImg" alt="${meal.strMeal}"></div>
+    <div class="h1">${meal.strMeal}</div>
+    <div class="sub">${meal.strCategory||''}${meal.strArea? ' · '+meal.strArea:''}</div>
+    <div class="grid">
+      <section class="card">
+        <h3>${UI_STRINGS[LANG].Ingredients}</h3>
+        <div id="ingRoot"></div>
+        ${tags.length?`<div class="tags">${tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>`:''}
+      </section>
+      <section class="card">
+        <h3>${UI_STRINGS[LANG].Instructions}</h3>
+        <div class="steps">${(meal.strInstructions||'').trim()}</div>
+        ${meal.strYoutube?`<p><a href="${meal.strYoutube}" target="_blank" rel="noopener">${UI_STRINGS[LANG].YouTube}</a></p>`:''}
+        ${meal.strSource?`<p><a href="${meal.strSource}" target="_blank" rel="noopener">${UI_STRINGS[LANG].Source}</a></p>`:''}
+      </section>
+    </div>`;
+
+  const hero = byId('heroImg'); hero.src = meal.strMealThumb; hero.addEventListener('load', ()=> hero.classList.add('loaded'));
+
+  const checksKey = `meal_checks_${id}`;
+  const checked = new Set(JSON.parse(localStorage.getItem(checksKey) || '[]'));
+  const root = byId('ingRoot');
+  ings.forEach((txt, idx)=>{
+    const node = el(`<div class="ing" style="transition-delay:${Math.min(idx*30, 400)}ms"><input type="checkbox" ${checked.has(idx)?'checked':''}><div class="txt">${txt}</div></div>`);
+    if(checked.has(idx)) node.classList.add('checked');
+    node.querySelector('input').addEventListener('change', (e)=>{
+      if(e.target.checked) checked.add(idx); else checked.delete(idx);
+      localStorage.setItem(checksKey, JSON.stringify([...checked]));
+      node.classList.toggle('checked', e.target.checked);
+    });
+    requestAnimationFrame(()=> node.classList.add('show'));
+    root.appendChild(node);
+  });
+
+  byId('btnCopy').onclick = ()=>{
+    const title = meal.strMeal;
+    const ingsTxt = ings.map(x=>`- ${x}`).join('\n');
+    const steps = (meal.strInstructions||'').trim();
+    const txt = `# ${title}\n${UI_STRINGS[LANG].Category}: ${meal.strCategory||'-'} | ${UI_STRINGS[LANG].Region}: ${meal.strArea||'-'}\n\n${UI_STRINGS[LANG].Ingredients}:\n${ingsTxt}\n\n${UI_STRINGS[LANG].Instructions}:\n${steps}`;
+    navigator.clipboard.writeText(txt).then(()=> toast(UI_STRINGS[LANG].Copied));
+  };
+}
+
+// ====== CATEGORIES ======
+async function loadCategories(){
+  const r = await fetch(API.categories).then(r=>r.json()).catch(()=>({}));
+  CATEGORIES = (r.meals||[]).map(x=>x.strCategory);
+  const cats = byId('cats'); cats.innerHTML = '';
+  const list = ['All','Dessert',...CATEGORIES.filter(c=>c!=='Dessert')];
+  list.forEach((c,i)=>{
+    const chip = el(`<button class="chip" ${i===1? 'aria-current="true"':''}>${c}</button>`);
+    chip.addEventListener('click', async ()=>{
+      [...cats.children].forEach(n=> n.removeAttribute('aria-current'));
+      chip.setAttribute('aria-current','true');
+      if(c==='All'){ const q = byId('search').value.trim(); await doSearch(q||''); return; }
+      await loadByCategory(c);
+    });
+    cats.appendChild(chip);
+  });
+}
+
+async function loadByCategory(cat){
+  const r = await fetch(API.filterByCat(cat)).then(r=>r.json()).catch(()=>({}));
+  CURRENT_LIST = (r.meals||[]).map(m=>({ idMeal:m.idMeal, strMeal:m.strMeal, strMealThumb:m.strMealThumb, strCategory:cat }));
+  renderList(CURRENT_LIST);
+  if(CURRENT_LIST[0]) openMeal(CURRENT_LIST[0].idMeal);
+}
+
+// ====== SEARCH ======
+let DEB;
+async function doSearch(q){
+  const r = await fetch(API.search(q)).then(r=>r.json()).catch(()=>({}));
+  CURRENT_LIST = (r.meals||[]).map(m=>({ idMeal:m.idMeal, strMeal:m.strMeal, strMealThumb:m.strMealThumb, strCategory:m.strCategory, strArea:m.strArea }));
+  renderList(CURRENT_LIST);
+}
+
+// ====== RANDOM ======
+async function openRandom(){
+  const r = await fetch(API.random).then(r=>r.json()).catch(()=>({}));
+  const meal = r.meals && r.meals[0];
+  if(!meal){ toast(UI_STRINGS[LANG].Failed); return; }
+  CURRENT_LIST = [{ idMeal: meal.idMeal, strMeal: meal.strMeal, strMealThumb: meal.strMealThumb, strCategory: meal.strCategory, strArea: meal.strArea }];
+  renderList(CURRENT_LIST);
+  openMeal(meal.idMeal);
+}
+
+// ====== INIT ======
+(async function init(){
+  // language from LS
+  applyLangStatic();
+  byId('langRU').onclick = ()=>{ LANG='ru'; localStorage.setItem('ui_lang','ru'); applyLangStatic(); refreshAll(); };
+  byId('langEN').onclick = ()=>{ LANG='en'; localStorage.setItem('ui_lang','en'); applyLangStatic(); refreshAll(); };
+
+  await loadCategories();
+  await loadByCategory('Dessert');
+  const s = byId('search');
+  s.addEventListener('input', ()=>{ clearTimeout(DEB); DEB = setTimeout(()=> doSearch(s.value.trim()), 260); });
+  window.addEventListener('keydown', e=>{ if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); s.focus(); } });
+  byId('btnRandom').addEventListener('click', openRandom);
+})();
+
+function refreshAll(){
+  if(CURRENT_LIST.length){ renderList(CURRENT_LIST); const active=document.querySelector('.row.active'); if(active) openMeal(active.dataset.id); }
+}
+</script>
+</body>
+</html>
